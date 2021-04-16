@@ -59,8 +59,14 @@ struct addrspace {
         paddr_t as_stackpbase;
 #else
         /* Put stuff here for your VM system */
+        struct region *start_of_regions;
 #endif
 };
+struct region {
+        vaddr_t start;
+        size_t size;
+        struct region* next;
+}
 
 /*
  * Functions in addrspace.c:
