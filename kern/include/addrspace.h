@@ -60,7 +60,7 @@ struct addrspace {
 #else
         /* Put stuff here for your VM system */
         struct region *start_of_regions;
-#endif
+        paddr_t **pagetable;
 };
 struct region {
         vaddr_t start;

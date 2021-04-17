@@ -58,6 +58,7 @@ as_create(void)
 		return NULL;
 	}
 
+	as -> start_of_regions = NULL;
 	/*
 	 * Initialize as needed.
 	 */
@@ -78,7 +79,38 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	/*
 	 * Write this.
 	 */
+	struct region *old_re = old -> start_of_region;
+	struct region *new = NULL;
+	struct region *temp = NULL;
+	if(old == NULL){
+		return 0;
+	}else{
+		temp = kmalloc(sizeof(struct region));
+		if(temp == NULL){
+			as_destory(newas);
+			return ENOMEM;
+		}
+		vaddr_t addr = alloc_kpages(old_re -> size);
+		temp -> start = memcpy(addr, old_re -> start, old_re -> size);
+		temp -> size = old_re -> size;
+		temp -> next = NULL;
+		old_re = old_re -> next;
+		new = temp;
+	}
 
+	while(old != NULL){
+		temp = kmalloc(sizeof(struct region));
+		if(temp == NULL){
+			as_destory(newas);
+			return ENOMEM;
+		}
+		temp -> start = old_re -> start;
+		temp -> size = old_re -> size;
+		temp -> next = NULL;
+		new -> next = temp;
+		old_re = old_re -> next;
+
+	}
 	(void)old;
 
 	*ret = newas;
@@ -91,7 +123,13 @@ as_destroy(struct addrspace *as)
 	/*
 	 * Clean up as needed.
 	 */
-
+	struct region *tofree = as -> regions;
+	struct region *temp;
+	while(tofree != NULL){
+		temp = tofree -> next;
+		kfree(tofree);
+		tofree = temp;
+	}
 	kfree(as);
 }
 
