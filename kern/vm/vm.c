@@ -9,6 +9,21 @@
 /* Place your page table functions here */
 
 
+void vm_ptecp(paddr_t *** old, paddr_t *** new){
+    for(int i = 0; i< PAGE_SIZE; i++){
+        if(old[i] == NULL){
+            continue;
+        }
+        new[i] = kmalloc(sizeof(paddr_t **) * PAGE_SIZE);
+        for(int j = 0; J < PAGE_SIZE; j++){
+            if(old[i][j] = NULL){
+                continue;
+            }
+        }
+
+    }
+}
+
 void vm_bootstrap(void)
 {
     /* Initialise any global components of your VM sub-system here.  

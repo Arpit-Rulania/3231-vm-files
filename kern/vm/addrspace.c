@@ -48,6 +48,7 @@
  *
  */
 
+
 struct addrspace *
 as_create(void)
 {
@@ -59,6 +60,10 @@ as_create(void)
 	}
 
 	as -> start_of_regions = NULL;
+	as -> pagetable = kmalloc(sizeof(paddr_t**)* PAGE_SIZE);
+	for(int i = 0; i < PAGE_SIZE; i++){
+		as -> pagetable[i] = NULL;
+	}
 	/*
 	 * Initialize as needed.
 	 */
@@ -91,7 +96,9 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 			return ENOMEM;
 		}
 		vaddr_t addr = alloc_kpages(old_re -> size);
-		temp -> start = memcpy(addr, old_re -> start, old_re -> size);
+		//donno if we need to do this 
+		//memcpy(addr, old_re -> start, old_re -> size);
+		temp -> start = old_re -> start;
 		temp -> size = old_re -> size;
 		temp -> next = NULL;
 		old_re = old_re -> next;
@@ -104,6 +111,9 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 			as_destory(newas);
 			return ENOMEM;
 		}
+		vaddr_t addr = alloc_kpages(old_re -> size);
+		//donno if we need to do this
+		//memcpy(addr, old_re -> start, old_re -> size);
 		temp -> start = old_re -> start;
 		temp -> size = old_re -> size;
 		temp -> next = NULL;
@@ -111,6 +121,9 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 		old_re = old_re -> next;
 
 	}
+
+	//copy pagetable
+
 	(void)old;
 
 	*ret = newas;
@@ -130,6 +143,8 @@ as_destroy(struct addrspace *as)
 		kfree(tofree);
 		tofree = temp;
 	}
+	// need to free up the page table;
+
 	kfree(as);
 }
 
