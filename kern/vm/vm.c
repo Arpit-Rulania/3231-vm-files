@@ -9,15 +9,33 @@
 /* Place your page table functions here */
 
 
-void vm_ptecp(paddr_t *** old, paddr_t *** new) {
-    for(int i = 0; i< PAGE_SIZE; i++){
+void vm_ptecp(paddr_t *** old, paddr_t *** new){
+    for(int i = 0; i< 256; i++){
         if(old[i] == NULL){
             continue;
         }
-        new[i] = kmalloc(sizeof(paddr_t **) * PAGE_SIZE);
-        for(int j = 0; J < PAGE_SIZE; j++){
-            if(old[i][j] = NULL){
+        new[i] = kmalloc(sizeof(paddr_t **) * 64);
+        if(new[i] == NULL){
+            return ENOMEM;
+        }
+        for(int x = 0; x < 64; x ++){
+            new[i][x] =NULL;
+        }
+        for(int j = 0; J < 64; j++){
+            if(old[i][j] == NULL){
                 continue;
+            }
+            new[i][j] = kmalloc(sizeof(paddr_t *) * 64);
+            if(new[i][j] == NULL){
+                return ENOMEM;
+            }
+            bezero((void *)new[i][j], 64);
+            // do the memmove
+            if(memmove((void *)new[i][j], (const void *)PADDR_TO_KVADDR(old[i][j] & PAGE_FRAME), PAGE_SIZE) == NULL){
+
+            }
+            for(int k = 0; k < PAGE_SZIE; k++){
+
             }
         }
 

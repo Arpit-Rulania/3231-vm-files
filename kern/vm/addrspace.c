@@ -58,16 +58,16 @@ as_create(void)
 	if (as == NULL) {
 		return NULL;
 	}
-
+	// first level pagetable is 2^8 256
 	as -> start_of_regions = NULL;
-	as -> pagetable = kmalloc(sizeof(paddr_t**)* PAGE_SIZE);
+	as -> pagetable = kmalloc(sizeof(paddr_t**)* 256);
 	for(int i = 0; i < PAGE_SIZE; i++){
 		as -> pagetable[i] = NULL;
 	}
 	/*
 	 * Initialize as needed.
 	 */
-
+	
 	return as;
 }
 
