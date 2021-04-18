@@ -66,7 +66,7 @@ struct region {
         vaddr_t start;
         size_t size;
         struct region* next;
-}
+};
 
 /*
  * Functions in addrspace.c:

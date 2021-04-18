@@ -58,5 +58,14 @@ void free_kpages(vaddr_t addr);
 /* TLB shootdown handling called from interprocessor_interrupt */
 void vm_tlbshootdown(const struct tlbshootdown *);
 
+//getting the top 8 bits of the 32 bit address.
+vaddr_t level_1_bits (vaddr_t addr);
+
+//getting the middle 6 bits of the 32 bit address.
+vaddr_t level_2_bits (vaddr_t addr);
+
+//getting the lower 6 bits of the 32 bit address.
+vaddr_t level_3_bits (vaddr_t addr);
+
 
 #endif /* _VM_H_ */
