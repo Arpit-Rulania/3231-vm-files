@@ -75,5 +75,7 @@ int update_page_table_entry(struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
 
 void vm_ptecp(paddr_t *** old, paddr_t *** new);
 
+int check_region_exists(struct addrspace *as, vaddr_t vaddr, int faulttype);
+
 
 #endif /* _VM_H_ */

@@ -111,6 +111,32 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
     panic("vm_fault hasn't been written yet\n");
 
     return EFAULT;
+
+    if (faulttype == VM_FAULT_READONLY) {
+        return EFAULT;
+    } else if (faulttype != VM_FAULT_WRITE && faulttype != VM_FAULT_READ) {
+        return EINVAL
+    }
+
+    if (curproc == NULL) return EFAULT;
+
+    struct addrspace *as = proc_getas();
+    if (as == NULL) return EFAULT;
+    if (as->pagetable == NULL) return EFAULT;
+
+    uint32_t hbits = level_1_bits(faultaddress);
+    uint32_t mbits = level_2_bits(faultaddress);
+    uint32_t lbits = level_3_bits(faultaddress);
+
+    if (check_entry_exist(as, faultaddress) == 0)
+    {
+        if (check_region_exists(as, faultaddress, faulttype) == 0) {
+            load_tlb(faultaddress & PAGE_FRAME, pagetable[hbits][mbits][lbits]);
+            return 0;
+        }
+        return EFAULT;
+    }
+
 }
 
 /*
@@ -135,3 +161,26 @@ vaddr_t level_2_bits (vaddr_t addr) {
 vaddr_t level_3_bits (vaddr_t addr) {
     return (addr << 14) >> 26; //getting the lower 6 bits of the 32 bit address.
 }
+
+int check_region_exists(struct addrspace *as, vaddr_t vaddr, int faulttype) {
+    struct region *head = as->start_of_regions;
+    while(head != NULL) {
+        if ((vaddr < (head->start + head->size)) && vaddr >= head->start) {
+            break;
+        }
+        head = head->next;
+    }
+
+    if (head == NULL) return EFAULT; 
+    if (faulttype == VM_FAULT_WRITE) {
+        if (head->write_flag == 0) return EPERM;
+        else return 0;
+    } else if (faulttype == VM_FAULT_READ) {
+        if (head->read_flag == 0) return EPERM;
+        else return 0;
+    } else {
+        return EINVAL;
+    }
+    return 0;
+}
+
