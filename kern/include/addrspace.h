@@ -65,6 +65,8 @@ struct addrspace {
 struct region {
         vaddr_t start;
         size_t size;
+        int write_flag;
+        int read_flag;
         struct region* next;
 };
 
