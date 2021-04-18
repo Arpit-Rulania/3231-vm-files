@@ -67,5 +67,13 @@ vaddr_t level_2_bits (vaddr_t addr);
 //getting the lower 6 bits of the 32 bit address.
 vaddr_t level_3_bits (vaddr_t addr);
 
+int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
+
+int check_entry_exist(struct addrspace *as, vaddr_t vaddr);
+
+int update_page_table_entry(struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
+
+void vm_ptecp(paddr_t *** old, paddr_t *** new);
+
 
 #endif /* _VM_H_ */
