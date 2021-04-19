@@ -152,6 +152,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
         return EINVAL
     }
 
+    // get the address space
     struct addrspace *as = proc_getas();
     if (as == NULL) return EFAULT;
     if (as->pagetable == NULL) return EFAULT;
@@ -161,25 +162,31 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
     uint32_t mbits = level_2_bits(faultaddress);
     uint32_t lbits = level_3_bits(faultaddress);
 
+    // if entry is there in the page table then load it if the region is valid.
     if (check_entry_exist(as, faultaddress) == 0)
     {
         if (check_region_exists(as, faultaddress, faulttype) == 0) {
-            load_tlb(faultaddress & PAGE_FRAME, as->pagetable[hbits][mbits][lbits]);
+            int sql = splhigh();
+            tlb_random(faultaddress & TLBHI_VPAGE, as->pagetable[hbits][mbits][lbits]);
+            splx(sql);
             return 0;
         } else {
             return EFAULT;
         }
     }
 
+    // if the entry does not exist then check if the region is valid.
     if (check_region_exists(as, faultaddress, faulttype) != 0) {
         return check_region_exists(as, faultaddress, faulttype);
     }
 
+    // if the region is valid then allocate a page and a frame for that entry trying to be accessed.
     vaddr_t nV = alloc_kpages(1);
     if (nV == 0) return ENOMEM;
     bzero((void *)nV, PAGE_SIZE);
-    paddr_t pV = KVADDR_TO_PADDR(nV) & PAGE_FRAME;
+    paddr_t pV = KVADDR_TO_PADDR(nV) & TLBHI_VPAGE;
     struct region *curr = as->start_of_regions;
+    // get the current region...
     while (curr != NULL) {
         if ((vaddr < (curr->base_addr + curr->memsize)) && vaddr >= curr->base_addr) {
             break;
@@ -191,7 +198,9 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
         pV = pV|TLBLO_DIRTY;
     }
     if (insert_page_table_entry(as, faultaddress, pV|TLBLO_VALID)) return ENOMEM;
-    load_tlb(faultaddress & PAGE_FRAME, as->pagetable[hbits][mbits][lbits]);
+    int sql = splhigh();
+    tlb_random((faultaddress & TLBHI_VPAGE), as->pagetable[hbits][mbits][lbits]);
+    splx(sql);
     return 0;  
 }
 
