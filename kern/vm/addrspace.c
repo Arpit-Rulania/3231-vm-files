@@ -123,7 +123,9 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	}
 
 	//copy pagetable
-
+	if(vm_ptecp(old -> pagetable, newas -> pagetable) != 0){
+		return ENOMEM;
+	}
 	(void)old;
 
 	*ret = newas;
@@ -144,7 +146,7 @@ as_destroy(struct addrspace *as)
 		tofree = temp;
 	}
 	// need to free up the page table;
-
+	freePTE(as -> pagetable);
 	kfree(as);
 }
 
@@ -165,6 +167,15 @@ as_activate(void)
 	/*
 	 * Write this.
 	 */
+
+	// this is from dumb vm.c
+	spl = splhigh();
+
+	for (i=0; i<NUM_TLB; i++) {
+		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+	}
+
+	splx(spl);
 }
 
 void

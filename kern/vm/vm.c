@@ -13,7 +13,7 @@
 /* Place your page table functions here */
 
 
-void vm_ptecp(paddr_t *** old, paddr_t *** new){
+int vm_ptecp(paddr_t *** old, paddr_t *** new){
     //first level
     for(int i = 0; i< 256; i++){
         if(old[i] == NULL){
@@ -57,6 +57,29 @@ void vm_ptecp(paddr_t *** old, paddr_t *** new){
         }
 
     }
+    return 0;
+}
+
+void freePTE(paddr_t ***tofree){
+    for(int i = 0; i<256; i++){
+        if(tofree[i] == NULL){
+            continue;
+        }
+        for(int j = 0; j < 64; j++){
+            if(tofree[i][j] == NULL){
+                continue;
+            }
+            for(int k = 0; k < 64; k++){
+                if(tofree[i][j][k] != 0){
+                    free_kpages(PADDR_TO_KVADDR(tofree[i][j][k] & PAGE_FRAME));
+                }
+            }
+            kfree(tofree[i][j]);
+        }
+        kfree(tofree[i]);
+    }
+    kfree(tofree);
+    return;
 }
 
 int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr) {
