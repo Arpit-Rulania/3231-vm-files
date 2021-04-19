@@ -14,6 +14,7 @@
 
 
 void vm_ptecp(paddr_t *** old, paddr_t *** new){
+    //first level
     for(int i = 0; i< 256; i++){
         if(old[i] == NULL){
             continue;
@@ -35,11 +36,23 @@ void vm_ptecp(paddr_t *** old, paddr_t *** new){
             }
             bezero((void *)new[i][j], 64);
             // do the memmove
-            if(memmove((void *)new[i][j], (const void *)PADDR_TO_KVADDR(old[i][j] & PAGE_FRAME), PAGE_SIZE) == NULL){
-
-            }
+            
             for(int k = 0; k < PAGE_SZIE; k++){
+                if(old[i][j][k] == 0){
+                    new[i][j][k] = 0;
+                }else{
+                    
+                    if(memmove((void *)new[i][j], (const void *)PADDR_TO_KVADDR(old[i][j] & PAGE_FRAME), PAGE_SIZE) == NULL){
+                        //free the already malloced shit
+                        return ENOMEM;
+                    }
+                    vaddr_t framecp = alloc_kpages(1);
+                    if(framecp == NULL){
+                        return ENOMEM;
+                    }
+                    new[i][j][k] = (KVADDR_TO_PADDR(framecp) & PAGE_FRAME) | old[i][j][k] & TLBLO_DIRTY | TLBLO_VALID;;
 
+                }
             }
         }
 
