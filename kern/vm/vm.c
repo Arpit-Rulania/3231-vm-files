@@ -6,6 +6,10 @@
 #include <vm.h>
 #include <machine/tlb.h>
 
+#include <current.h>
+#include <proc.h>
+#include <spl.h>
+
 /* Place your page table functions here */
 
 
@@ -63,7 +67,7 @@ int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr)
         if (as->pagetable[hbits][mbits] == NULL) {
             return ENOMEM;
         }
-        bzero((void *)as->pagetable[hbits][mbits]);
+        bzero((void *)as->pagetable[hbits][mbits], 64);
     } else if (as->pagetable[hbits][mbits] == NULL) {
         as->pagetable[hbits][mbits] = kmalloc(sizeof(paddr_t *) * 64);
         if (as->pagetable[hbits][mbits] == NULL) {
@@ -79,26 +83,6 @@ int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr)
     
     as->pagetable[hbits][mbits][lbits] = paddr;
     return 0;
-}
-
-int check_entry_exist(struct addrspace *as, vaddr_t vaddr) {
-    uint32_t hbits = level_1_bits(vaddr);
-    uint32_t mbits = level_2_bits(vaddr);
-    uint32_t lbits = level_3_bits(vaddr);
-
-    if (hbits >= 256 || mbits >= 64 || lbits >= 64) {
-        return EFAULT;
-    } else if (as->pagetable == NULL) {
-        return -1;
-    } else if (as->pagetable[hbits] == NULL) {
-        return -1;
-    } else if (as->pagetable[hbits][mbits] == NULL) {
-        return -1;
-    } else if (as->pagetable[hbits][mbits][lbits] == 0) {
-        return -1;
-    } else {
-        return 0;
-    }
 }
 
 int update_page_table_entry(struct addrspace *as, vaddr_t vaddr, paddr_t paddr) {
@@ -123,12 +107,8 @@ void vm_bootstrap(void)
 
 int vm_fault(int faulttype, vaddr_t faultaddress)
 {
-    (void) faulttype;
-    (void) faultaddress;
-
-    panic("vm_fault hasn't been written yet\n");
-
-    return EFAULT;
+    if (faultaddress == 0) return EFAULT;
+    if (curproc == NULL) return EFAULT;
 
     if (faulttype == VM_FAULT_READONLY) {
         return EFAULT;
@@ -136,11 +116,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
         return EINVAL
     }
 
-    if (curproc == NULL) return EFAULT;
-
     struct addrspace *as = proc_getas();
     if (as == NULL) return EFAULT;
     if (as->pagetable == NULL) return EFAULT;
+    if (as->start_of_regions == NULL) return EFAULT;
 
     uint32_t hbits = level_1_bits(faultaddress);
     uint32_t mbits = level_2_bits(faultaddress);
@@ -149,12 +128,35 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
     if (check_entry_exist(as, faultaddress) == 0)
     {
         if (check_region_exists(as, faultaddress, faulttype) == 0) {
-            load_tlb(faultaddress & PAGE_FRAME, pagetable[hbits][mbits][lbits]);
+            load_tlb(faultaddress & PAGE_FRAME, as->pagetable[hbits][mbits][lbits]);
             return 0;
+        } else {
+            return EFAULT;
         }
-        return EFAULT;
     }
 
+    if (check_region_exists(as, faultaddress, faulttype) != 0) {
+        return check_region_exists(as, faultaddress, faulttype);
+    }
+
+    vaddr_t nV = alloc_kpages(1);
+    if (nV == 0) return ENOMEM;
+    bzero((void *)nV, PAGE_SIZE);
+    paddr_t pV = KVADDR_TO_PADDR(nV) & PAGE_FRAME;
+    struct region *curr = as->start_of_regions;
+    while (curr != NULL) {
+        if ((vaddr < (curr->base_addr + curr->memsize)) && vaddr >= curr->base_addr) {
+            break;
+        } else {
+            curr = curr->next;
+        }
+    }
+    if (curr->write_flag) {
+        pV = pV|TLBLO_DIRTY;
+    }
+    if (insert_page_table_entry(as, faultaddress, pV|TLBLO_VALID)) return ENOMEM;
+    load_tlb(faultaddress & PAGE_FRAME, as->pagetable[hbits][mbits][lbits]);
+    return 0;  
 }
 
 /*
@@ -200,5 +202,25 @@ int check_region_exists(struct addrspace *as, vaddr_t vaddr, int faulttype) {
         return EINVAL;
     }
     return 0;
+}
+
+int check_entry_exist(struct addrspace *as, vaddr_t vaddr) {
+    uint32_t hbits = level_1_bits(vaddr);
+    uint32_t mbits = level_2_bits(vaddr);
+    uint32_t lbits = level_3_bits(vaddr);
+
+    if (hbits >= 256 || mbits >= 64 || lbits >= 64) {
+        return EFAULT;
+    } else if (as->pagetable == NULL) {
+        return -1;
+    } else if (as->pagetable[hbits] == NULL) {
+        return -1;
+    } else if (as->pagetable[hbits][mbits] == NULL) {
+        return -1;
+    } else if (as->pagetable[hbits][mbits][lbits] == 0) {
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
