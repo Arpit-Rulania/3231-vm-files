@@ -67,6 +67,8 @@ struct region {
         size_t size;
         int write_flag;
         int read_flag;
+        int pre_write;
+        int pre_read;
         struct region* next;
 };
 

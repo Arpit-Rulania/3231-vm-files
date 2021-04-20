@@ -184,13 +184,36 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	 * Write this.
 	 */
 
-	(void)as;
-	(void)vaddr;
-	(void)memsize;
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-	return ENOSYS; /* Unimplemented */
+	//(void)as;
+	//(void)vaddr;
+	//(void)memsize;
+	//(void)readable;
+	//(void)writeable;
+	//(void)executable;
+
+	// copied from dumb vm
+	memsize +=  vaddr & ~(vaddr_t)PAGE_FRAME;
+	vaddr &= PAGE_FRAME;
+
+	memsize = (memsize + PAGE_SIZE -1) & PAGE_FRAME;
+	// create the region
+
+	struct region *new = kmalloc(sizeof(struct region));
+
+	if (new == NULL){
+		return ENOMEM;
+	} 
+	new -> start = vaddr;
+	new -> size = memsize;
+	new -> write_flag = writeable;
+	new -> read_flag = readable;
+
+	struct region *tmp = as -> start_of_regions;
+	new -> next = tmp;
+	as -> start_of_regions = new;
+
+
+	return 0; /* Unimplemented */
 }
 
 int
@@ -199,8 +222,19 @@ as_prepare_load(struct addrspace *as)
 	/*
 	 * Write this.
 	 */
+	struct region *temp = as -> start_of_region;
 
-	(void)as;
+
+	while(temp != NULL){
+		temp -> pre_read = temp -> read_flag;
+		temp -> pre_write = temp -> write_flag;
+		temp -> read_flag = 1;
+		temp -> write_flag = 1;
+		temp = tmep -> next;
+	}
+
+
+	//(void)as;
 	return 0;
 }
 
@@ -210,8 +244,46 @@ as_complete_load(struct addrspace *as)
 	/*
 	 * Write this.
 	 */
+	as_activate();
+	paddr_t*** table = as -> pagetable;
 
-	(void)as;
+	for(int i = 0; i<256; i++){
+		if(table[i] != NULL){
+			for(int j = 0; j<64; j++){
+				if(table[i][j] != NULL){
+					for(int k = 0; k<64; k++){
+						if(table[i][j][k] != 0){
+							vaddr_t h_bit = i << 24;
+							vaddr_t m_bit = i << 18;
+							vaddr_t l_bit = i << 12;
+							varr_t total = h_bit | m_bit | l_bit;
+							struct region *curr = as->start_of_regions;
+    						// get the current region...
+							while (curr != NULL) {
+								if ((total < (curr->start + curr->size)) && total >= start) {
+									break;
+								} else {
+									curr = curr->next;
+								}
+								if(curr -> pre_write == 0){
+									table[i][j][k] = (tablle[i][j][k] & PAGE_FRAME) | TLBLO_VALID;
+								}
+							}
+
+						}
+					}
+				}
+			}
+		}
+	}
+
+	//(void)as;
+	struct region *tmp = as -> start_of_regions;
+	while(tmp != NULL){
+		curr -> write_flag = curr -> pre_write;
+		curr -> read_flag = curr -> pre_read;
+		tmp = tmp -> next;
+	}
 	return 0;
 }
 
@@ -223,10 +295,12 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	 */
 
 	(void)as;
-
+	int read = 1;
+	int write = 1;
+	int exc = 0;
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK;
-
-	return 0;
+	int result = as_define_region(as, *stackptr - USER_STACK_SIZE, USER_STACK_SIZE, read, write, exc);
+	return result;
 }
 

@@ -188,7 +188,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
     struct region *curr = as->start_of_regions;
     // get the current region...
     while (curr != NULL) {
-        if ((vaddr < (curr->base_addr + curr->memsize)) && vaddr >= curr->base_addr) {
+        if ((faultaddress < (curr->start + curr->size)) && faultaddress >= curr->start) {
             break;
         } else {
             curr = curr->next;
