@@ -255,8 +255,8 @@ as_complete_load(struct addrspace *as)
 					for(int k = 0; k<64; k++){
 						if(table[i][j][k] != 0){
 							vaddr_t h_bit = i << 24;
-							vaddr_t m_bit = i << 18;
-							vaddr_t l_bit = i << 12;
+							vaddr_t m_bit = j << 18;
+							vaddr_t l_bit = k << 12;
 							vaddr_t total = h_bit | m_bit | l_bit;
 							struct region *curr = as->start_of_regions;
     						// get the current region...
@@ -266,9 +266,10 @@ as_complete_load(struct addrspace *as)
 								} else {
 									curr = curr->next;
 								}
-								if(curr -> pre_write == 0){
-									table[i][j][k] = (table[i][j][k] & PAGE_FRAME) | TLBLO_VALID;
-								}
+								
+							}
+							if(curr -> pre_write == 0){
+								table[i][j][k] = (table[i][j][k] & PAGE_FRAME) | TLBLO_VALID;
 							}
 
 						}
