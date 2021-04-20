@@ -38,11 +38,13 @@
 
 
 #include <machine/vm.h>
+#include <addrspace.h>
 
 /* Fault-type arguments to vm_fault() */
 #define VM_FAULT_READ        0    /* A read was attempted */
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
+#define SPEC_STACK_SIZE       16 * PAGE_SIZE
 
 
 /* Initialization function */
@@ -67,17 +69,17 @@ vaddr_t level_2_bits (vaddr_t addr);
 //getting the lower 6 bits of the 32 bit address.
 vaddr_t level_3_bits (vaddr_t addr);
 
-int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
+//int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
 
-int check_entry_exist(struct addrspace *as, vaddr_t vaddr);
+//int check_entry_exist(struct addrspace *as, vaddr_t vaddr);
 
-int update_page_table_entry(struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
+//int update_page_table_entry(struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
 
-void vm_ptecp(paddr_t *** old, paddr_t *** new);
+int vm_ptecp(paddr_t *** old, paddr_t *** new);
 
 void freePTE(paddr_t ***tofree);
 
-int check_region_exists(struct addrspace *as, vaddr_t vaddr, int faulttype);
+//int check_region_exists(struct addrspace *as, vaddr_t vaddr, int faulttype);
 
 
 #endif /* _VM_H_ */

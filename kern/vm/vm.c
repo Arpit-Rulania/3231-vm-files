@@ -26,7 +26,7 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
         for(int x = 0; x < 64; x ++){
             new[i][x] =NULL;
         }
-        for(int j = 0; J < 64; j++){
+        for(int j = 0; j < 64; j++){
             if(old[i][j] == NULL){
                 continue;
             }
@@ -34,10 +34,10 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
             if(new[i][j] == NULL){
                 return ENOMEM;
             }
-            bezero((void *)new[i][j], 64);
+            bzero((void *)new[i][j], 64);
             // do the memmove
             
-            for(int k = 0; k < PAGE_SZIE; k++){
+            for(int k = 0; k < 64; k++){
                 if(old[i][j][k] == 0){
                     new[i][j][k] = 0;
                 }else{
@@ -131,7 +131,46 @@ int update_page_table_entry(struct addrspace *as, vaddr_t vaddr, paddr_t paddr) 
     as->pagetable[hbits][mbits][lbits] = paddr;
     return 0;
 }
+int check_region_exists(struct addrspace *as, vaddr_t vaddr, int faulttype) {
+    struct region *head = as->start_of_regions;
+    while(head != NULL) {
+        if ((vaddr < (head->start + head->size)) && vaddr >= head->start) {
+            break;
+        }
+        head = head->next;
+    }
 
+    if (head == NULL) return EFAULT; 
+    if (faulttype == VM_FAULT_WRITE) {
+        if (head->write_flag == 0) return EPERM;
+        else return 0;
+    } else if (faulttype == VM_FAULT_READ) {
+        if (head->read_flag == 0) return EPERM;
+        else return 0;
+    } else {
+        return EINVAL;
+    }
+    return 0;
+}
+
+int check_entry_exist(struct addrspace *as, vaddr_t vaddr) {
+    uint32_t hbits = level_1_bits(vaddr);
+    uint32_t mbits = level_2_bits(vaddr);
+    uint32_t lbits = level_3_bits(vaddr);
+
+    if (hbits >= 256 || mbits >= 64 || lbits >= 64) {
+        return EFAULT;
+    } else if (as->pagetable == NULL) {
+        return -1;
+    } else if (as->pagetable[hbits] == NULL) {
+        return -1;
+    } else if (as->pagetable[hbits][mbits] == NULL) {
+        return -1;
+    } else if (as->pagetable[hbits][mbits][lbits] == 0) {
+        return -1;
+    } else {
+        return 0;
+    }
 void vm_bootstrap(void)
 {
     /* Initialise any global components of your VM sub-system here.  
@@ -227,45 +266,6 @@ vaddr_t level_3_bits (vaddr_t addr) {
     return (addr << 14) >> 26; //getting the lower 6 bits of the 32 bit address.
 }
 
-int check_region_exists(struct addrspace *as, vaddr_t vaddr, int faulttype) {
-    struct region *head = as->start_of_regions;
-    while(head != NULL) {
-        if ((vaddr < (head->start + head->size)) && vaddr >= head->start) {
-            break;
-        }
-        head = head->next;
-    }
 
-    if (head == NULL) return EFAULT; 
-    if (faulttype == VM_FAULT_WRITE) {
-        if (head->write_flag == 0) return EPERM;
-        else return 0;
-    } else if (faulttype == VM_FAULT_READ) {
-        if (head->read_flag == 0) return EPERM;
-        else return 0;
-    } else {
-        return EINVAL;
-    }
-    return 0;
-}
-
-int check_entry_exist(struct addrspace *as, vaddr_t vaddr) {
-    uint32_t hbits = level_1_bits(vaddr);
-    uint32_t mbits = level_2_bits(vaddr);
-    uint32_t lbits = level_3_bits(vaddr);
-
-    if (hbits >= 256 || mbits >= 64 || lbits >= 64) {
-        return EFAULT;
-    } else if (as->pagetable == NULL) {
-        return -1;
-    } else if (as->pagetable[hbits] == NULL) {
-        return -1;
-    } else if (as->pagetable[hbits][mbits] == NULL) {
-        return -1;
-    } else if (as->pagetable[hbits][mbits][lbits] == 0) {
-        return -1;
-    } else {
-        return 0;
-    }
 }
 

@@ -71,6 +71,24 @@ as_create(void)
 	return as;
 }
 
+void
+as_destroy(struct addrspace *as)
+{
+	/*
+	 * Clean up as needed.
+	 */
+	struct region *tofree = as -> start_of_regions;
+	struct region *temp;
+	while(tofree != NULL){
+		temp = tofree -> next;
+		kfree(tofree);
+		tofree = temp;
+	}
+	// need to free up the page table;
+	freePTE(as -> pagetable);
+	kfree(as);
+}
+
 int as_copy(struct addrspace *old, struct addrspace **ret) {
 	struct addrspace *newas;
 
@@ -82,7 +100,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 	/*
 	 * Write this.
 	 */
-	struct region *old_re = old -> start_of_region;
+	struct region *old_re = old -> start_of_regions;
 	struct region *new = NULL;
 	struct region *temp = NULL;
 	if(old == NULL){
@@ -90,10 +108,10 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 	}else{
 		temp = kmalloc(sizeof(struct region));
 		if(temp == NULL){
-			as_destory(newas);
+			as_destroy(newas);
 			return ENOMEM;
 		}
-		vaddr_t addr = alloc_kpages(old_re -> size);
+		//vaddr_t addr = alloc_kpages(old_re -> size);
 		//donno if we need to do this 
 		//memcpy(addr, old_re -> start, old_re -> size);
 		temp -> start = old_re -> start;
@@ -106,10 +124,10 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 	while(old != NULL){
 		temp = kmalloc(sizeof(struct region));
 		if(temp == NULL){
-			as_destory(newas);
+			as_destroy(newas);
 			return ENOMEM;
 		}
-		vaddr_t addr = alloc_kpages(old_re -> size);
+		//vaddr_t addr = alloc_kpages(old_re -> size);
 		//donno if we need to do this
 		//memcpy(addr, old_re -> start, old_re -> size);
 		temp -> start = old_re -> start;
@@ -119,34 +137,17 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 		old_re = old_re -> next;
 
 	}
-
 	//copy pagetable
 	if(vm_ptecp(old -> pagetable, newas -> pagetable) != 0){
 		return ENOMEM;
 	}
-	(void)old;
+	//(void)old;
 
 	*ret = newas;
 	return 0;
 }
 
-void
-as_destroy(struct addrspace *as)
-{
-	/*
-	 * Clean up as needed.
-	 */
-	struct region *tofree = as -> regions;
-	struct region *temp;
-	while(tofree != NULL){
-		temp = tofree -> next;
-		kfree(tofree);
-		tofree = temp;
-	}
-	// need to free up the page table;
-	freePTE(as -> pagetable);
-	kfree(as);
-}
+
 
 void as_activate(void) {
 	struct addrspace *as;
@@ -165,9 +166,9 @@ void as_activate(void) {
 	 */
 
 	// this is from dumb vm.c
-	spl = splhigh();
+	int spl = splhigh();
 
-	for (i=0; i<NUM_TLB; i++) {
+	for (int i=0; i<NUM_TLB; i++) {
 		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
 	}
 
@@ -189,7 +190,7 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	//(void)memsize;
 	//(void)readable;
 	//(void)writeable;
-	//(void)executable;
+	(void)executable;
 
 	// copied from dumb vm
 	memsize +=  vaddr & ~(vaddr_t)PAGE_FRAME;
@@ -222,7 +223,7 @@ as_prepare_load(struct addrspace *as)
 	/*
 	 * Write this.
 	 */
-	struct region *temp = as -> start_of_region;
+	struct region *temp = as -> start_of_regions;
 
 
 	while(temp != NULL){
@@ -230,7 +231,7 @@ as_prepare_load(struct addrspace *as)
 		temp -> pre_write = temp -> write_flag;
 		temp -> read_flag = 1;
 		temp -> write_flag = 1;
-		temp = tmep -> next;
+		temp = temp -> next;
 	}
 
 
@@ -256,17 +257,17 @@ as_complete_load(struct addrspace *as)
 							vaddr_t h_bit = i << 24;
 							vaddr_t m_bit = i << 18;
 							vaddr_t l_bit = i << 12;
-							varr_t total = h_bit | m_bit | l_bit;
+							vaddr_t total = h_bit | m_bit | l_bit;
 							struct region *curr = as->start_of_regions;
     						// get the current region...
 							while (curr != NULL) {
-								if ((total < (curr->start + curr->size)) && total >= start) {
+								if ((total < (curr->start + curr->size)) && total >= curr -> start) {
 									break;
 								} else {
 									curr = curr->next;
 								}
 								if(curr -> pre_write == 0){
-									table[i][j][k] = (tablle[i][j][k] & PAGE_FRAME) | TLBLO_VALID;
+									table[i][j][k] = (table[i][j][k] & PAGE_FRAME) | TLBLO_VALID;
 								}
 							}
 
@@ -280,8 +281,8 @@ as_complete_load(struct addrspace *as)
 	//(void)as;
 	struct region *tmp = as -> start_of_regions;
 	while(tmp != NULL){
-		curr -> write_flag = curr -> pre_write;
-		curr -> read_flag = curr -> pre_read;
+		tmp -> write_flag = tmp -> pre_write;
+		tmp -> read_flag = tmp -> pre_read;
 		tmp = tmp -> next;
 	}
 	return 0;
@@ -300,7 +301,7 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	int exc = 0;
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK;
-	int result = as_define_region(as, *stackptr - USER_STACK_SIZE, USER_STACK_SIZE, read, write, exc);
+	int result = as_define_region(as, *stackptr - SPEC_STACK_SIZE, SPEC_STACK_SIZE, read, write, exc);
 	return result;
 }
 
