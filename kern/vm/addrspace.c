@@ -208,6 +208,8 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 	new -> size = memsize;
 	new -> write_flag = writeable;
 	new -> read_flag = readable;
+	new -> pre_read = readable;
+	new -> pre_write = writeable;
 
 	struct region *tmp = as -> start_of_regions;
 	new -> next = tmp;
