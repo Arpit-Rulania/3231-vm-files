@@ -61,7 +61,7 @@ as_create(void)
 	// first level pagetable is 2^8 256
 	as -> start_of_regions = NULL;
 	as -> pagetable = kmalloc(sizeof(paddr_t**)* 256);
-	for(int i = 0; i < PAGE_SIZE; i++){
+	for(int i = 0; i < 256; i++){
 		as -> pagetable[i] = NULL;
 	}
 	/*
@@ -71,9 +71,7 @@ as_create(void)
 	return as;
 }
 
-int
-as_copy(struct addrspace *old, struct addrspace **ret)
-{
+int as_copy(struct addrspace *old, struct addrspace **ret) {
 	struct addrspace *newas;
 
 	newas = as_create();
@@ -150,9 +148,7 @@ as_destroy(struct addrspace *as)
 	kfree(as);
 }
 
-void
-as_activate(void)
-{
+void as_activate(void) {
 	struct addrspace *as;
 
 	as = proc_getas();
@@ -178,31 +174,12 @@ as_activate(void)
 	splx(spl);
 }
 
-void
-as_deactivate(void)
-{
-	/*
-	 * Write this. For many designs it won't need to actually do
-	 * anything. See proc.c for an explanation of why it (might)
-	 * be needed.
-	 */
+void as_deactivate(void) {
 	as_activate();
 }
 
-/*
- * Set up a segment at virtual address VADDR of size MEMSIZE. The
- * segment in memory extends from VADDR up to (but not including)
- * VADDR+MEMSIZE.
- *
- * The READABLE, WRITEABLE, and EXECUTABLE flags are set if read,
- * write, or execute permission should be set on the segment. At the
- * moment, these are ignored. When you write the VM system, you may
- * want to implement them.
- */
-int
-as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
-		 int readable, int writeable, int executable)
-{
+int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize, 
+					 int readable, int writeable, int executable) {
 	/*
 	 * Write this.
 	 */
