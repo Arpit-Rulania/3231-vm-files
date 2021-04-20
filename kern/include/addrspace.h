@@ -129,7 +129,13 @@ int               as_prepare_load(struct addrspace *as);
 int               as_complete_load(struct addrspace *as);
 int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
+int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
 
+int check_entry_exist(struct addrspace *as, vaddr_t vaddr);
+
+int update_page_table_entry(struct addrspace *as, vaddr_t vaddr, paddr_t paddr);
+
+int check_region_exists(struct addrspace *as, vaddr_t vaddr, int faulttype);
 /*
  * Functions in loadelf.c
  *    load_elf - load an ELF user program executable into the current

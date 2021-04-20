@@ -42,15 +42,15 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
                     new[i][j][k] = 0;
                 }else{
                     
-                    if(memmove((void *)new[i][j], (const void *)PADDR_TO_KVADDR(old[i][j] & PAGE_FRAME), PAGE_SIZE) == NULL){
+                    if(memmove((void *)new[i][j][k], (const void *)PADDR_TO_KVADDR(old[i][j][k] & PAGE_FRAME), PAGE_SIZE) == NULL){
                         //free the already malloced shit
                         return ENOMEM;
                     }
                     vaddr_t framecp = alloc_kpages(1);
-                    if(framecp == NULL){
-                        return ENOMEM;
-                    }
-                    new[i][j][k] = (KVADDR_TO_PADDR(framecp) & PAGE_FRAME) | old[i][j][k] & TLBLO_DIRTY | TLBLO_VALID;;
+                    //if(framecp == NULL){
+                      //  return ENOMEM;
+                    //}
+                    new[i][j][k] = (KVADDR_TO_PADDR(framecp) & PAGE_FRAME) | (old[i][j][k] & TLBLO_DIRTY) | TLBLO_VALID;;
 
                 }
             }
@@ -109,7 +109,7 @@ int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr)
         if (as->pagetable[hbits][mbits] == NULL) {
             return ENOMEM;
         }
-        bzero((void *)as->pagetable[hbits][mbits]);
+        bzero((void *)as->pagetable[hbits][mbits], 64);
     } else {
         // Check if there is something in page already
         if (as->pagetable[hbits][mbits][lbits] != 0){
@@ -188,7 +188,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress)
     if (faulttype == VM_FAULT_READONLY) {
         return EFAULT;
     } else if (faulttype != VM_FAULT_WRITE && faulttype != VM_FAULT_READ) {
-        return EINVAL
+        return EINVAL;
     }
 
     // get the address space
@@ -268,4 +268,3 @@ vaddr_t level_3_bits (vaddr_t addr) {
 
 
 }
-
