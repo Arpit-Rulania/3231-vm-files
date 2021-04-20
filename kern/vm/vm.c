@@ -11,7 +11,17 @@
 #include <spl.h>
 
 /* Place your page table functions here */
+vaddr_t level_1_bits (vaddr_t addr) {
+    return addr >> 24; //getting the top 8 bits of the 32 bit address.
+}
 
+vaddr_t level_2_bits (vaddr_t addr) {
+    return (addr << 8) >> 26; //getting the middle 6 bits of the 32 bit address.
+}
+
+vaddr_t level_3_bits (vaddr_t addr) {
+    return (addr << 14) >> 26; //getting the lower 6 bits of the 32 bit address.
+}
 
 int vm_ptecp(paddr_t *** old, paddr_t *** new){
     //first level
@@ -171,6 +181,8 @@ int check_entry_exist(struct addrspace *as, vaddr_t vaddr) {
     } else {
         return 0;
     }
+}
+
 void vm_bootstrap(void)
 {
     /* Initialise any global components of your VM sub-system here.  
@@ -254,17 +266,7 @@ vm_tlbshootdown(const struct tlbshootdown *ts)
 	panic("vm tried to do tlb shootdown?!\n");
 }
 
-vaddr_t level_1_bits (vaddr_t addr) {
-    return addr >> 24; //getting the top 8 bits of the 32 bit address.
-}
-
-vaddr_t level_2_bits (vaddr_t addr) {
-    return (addr << 8) >> 26; //getting the middle 6 bits of the 32 bit address.
-}
-
-vaddr_t level_3_bits (vaddr_t addr) {
-    return (addr << 14) >> 26; //getting the lower 6 bits of the 32 bit address.
-}
 
 
-}
+
+
