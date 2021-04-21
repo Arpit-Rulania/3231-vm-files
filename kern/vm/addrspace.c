@@ -80,9 +80,10 @@ as_destroy(struct addrspace *as)
 	struct region *tofree = as -> start_of_regions;
 	struct region *temp;
 	while(tofree != NULL){
-		temp = tofree -> next;
-		kfree(tofree);
-		tofree = temp;
+		temp = tofree;
+		tofree = tofree -> next;
+		kfree(temp);
+		
 	}
 	// need to free up the page table;
 	freePTE(as -> pagetable);
@@ -121,7 +122,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 		new = temp;
 	}
 
-	while(old != NULL){
+	while(old_re != NULL){
 		temp = kmalloc(sizeof(struct region));
 		if(temp == NULL){
 			as_destroy(newas);
@@ -270,8 +271,10 @@ as_complete_load(struct addrspace *as)
 								}
 								
 							}
-							if(curr -> pre_write == 0){
-								table[i][j][k] = (table[i][j][k] & PAGE_FRAME) | TLBLO_VALID;
+							if(curr != NULL){
+								if(curr -> pre_write == 0){
+									table[i][j][k] = (table[i][j][k] & PAGE_FRAME) | TLBLO_VALID;
+								}
 							}
 
 						}

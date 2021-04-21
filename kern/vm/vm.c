@@ -57,6 +57,7 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
                         return ENOMEM;
                     }
                     vaddr_t framecp = alloc_kpages(1);
+                    bzero((void *)new[i][j], PAGE_SIZE);
                     //if(framecp == NULL){
                       //  return ENOMEM;
                     //}
