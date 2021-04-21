@@ -5,7 +5,7 @@
 #include <addrspace.h>
 #include <vm.h>
 #include <machine/tlb.h>
-
+#include <synch.h>
 #include <current.h>
 #include <proc.h>
 #include <spl.h>
@@ -44,24 +44,26 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
             if(new[i][j] == NULL){
                 return ENOMEM;
             }
-            bzero((void *)new[i][j], 64);
+            //bzero((void *)new[i][j], 64);
+
             // do the memmove
             
             for(int k = 0; k < 64; k++){
                 if(old[i][j][k] == 0){
-                    new[i][j][k] = 0;
+                    //new[i][j][k] = 0;
                 }else{
-                    
-                    if(memmove((void *)new[i][j][k], (const void *)PADDR_TO_KVADDR(old[i][j][k] & PAGE_FRAME), PAGE_SIZE) == NULL){
-                        //free the already malloced shit
+                    vaddr_t framecp = alloc_kpages(1);
+                    if(framecp == 0){
                         return ENOMEM;
                     }
-                    vaddr_t framecp = alloc_kpages(1);
-                    bzero((void *)new[i][j], PAGE_SIZE);
+                    bzero((void *)framecp, PAGE_SIZE);
+                    
+                    memmove((void *)framecp, (void *)PADDR_TO_KVADDR(old[i][j][k] & PAGE_FRAME), PAGE_SIZE);
+                    
                     //if(framecp == NULL){
                       //  return ENOMEM;
                     //}
-                    new[i][j][k] = (KVADDR_TO_PADDR(framecp) & PAGE_FRAME) | (old[i][j][k] & TLBLO_DIRTY) | TLBLO_VALID;;
+                    new[i][j][k] = (KVADDR_TO_PADDR(framecp) & PAGE_FRAME) | (old[i][j][k] & TLBLO_DIRTY) | TLBLO_VALID;
 
                 }
             }
@@ -72,6 +74,7 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
 }
 
 void freePTE(paddr_t ***tofree){
+    
     for(int i = 0; i<256; i++){
         if(tofree[i] == NULL){
             continue;
@@ -90,6 +93,23 @@ void freePTE(paddr_t ***tofree){
         kfree(tofree[i]);
     }
     kfree(tofree);
+    
+    /*for(int i = 0; i<256; i++){
+        if(tofree[i] != NULL){
+            for(int j = 0; j < 64; j++){
+                if(tofree[i][j] != NULL){
+                    for(int k = 0; k < 64; k++){
+                        if(tofree[i][j][k] != 0){
+                            free_kpages(PADDR_TO_KVADDR(tofree[i][j][k] & PAGE_FRAME));
+                        }
+                    }
+                }
+                kfree(tofree[i][j]);
+            }   
+        }
+        kfree(tofree[i]);
+    }
+    kfree(tofree);*/
     return;
 }
 
@@ -102,33 +122,48 @@ int insert_page_table_entry (struct addrspace *as, vaddr_t vaddr, paddr_t paddr)
         return EFAULT;
     }
 
+    lock_acquire(as->thelock);
+
     if (as->pagetable[hbits] == NULL) {
         as->pagetable[hbits] = kmalloc(sizeof(paddr_t **) * 64);
+        //as->pagetable[hbits] = kmalloc(4 * 64);
         if (as->pagetable[hbits] == NULL) {
+            lock_release(as->thelock);
             return ENOMEM;
         }
         for (int i = 0; i < 64; i++) {
             as->pagetable[hbits][i] = NULL;
         }
         as->pagetable[hbits][mbits] = kmalloc(sizeof(paddr_t *) * 64);
+        //as->pagetable[hbits][mbits] = kmalloc(64);
         if (as->pagetable[hbits][mbits] == NULL) {
+            lock_release(as->thelock);
             return ENOMEM;
         }
-        bzero((void *)as->pagetable[hbits][mbits], 64);
+        //bzero((void *)as->pagetable[hbits][mbits], 64);
+        for (int i = 0; i < 64; i++) {
+            as->pagetable[hbits][mbits][i] = 0;
+        }
     } else if (as->pagetable[hbits][mbits] == NULL) {
         as->pagetable[hbits][mbits] = kmalloc(sizeof(paddr_t *) * 64);
+        //as->pagetable[hbits][mbits] = kmalloc(64);
         if (as->pagetable[hbits][mbits] == NULL) {
+            lock_release(as->thelock);
             return ENOMEM;
         }
-        bzero((void *)as->pagetable[hbits][mbits], 64);
+        //bzero((void *)as->pagetable[hbits][mbits], 64);
+        for (int i = 0; i < 64; i++) {
+            as->pagetable[hbits][mbits][i] = 0;
+        }
     } else {
         // Check if there is something in page already
         if (as->pagetable[hbits][mbits][lbits] != 0){
+            lock_release(as->thelock);
             return EFAULT; 
         }
     }
-    
     as->pagetable[hbits][mbits][lbits] = paddr;
+    lock_release(as->thelock);
     return 0;
 }
 
@@ -169,17 +204,24 @@ int check_entry_exist(struct addrspace *as, vaddr_t vaddr) {
     uint32_t mbits = level_2_bits(vaddr);
     uint32_t lbits = level_3_bits(vaddr);
 
+    lock_acquire(as->thelock);
     if (hbits >= 256 || mbits >= 64 || lbits >= 64) {
+        lock_release(as->thelock);
         return EFAULT;
     } else if (as->pagetable == NULL) {
+        lock_release(as->thelock);
         return -1;
     } else if (as->pagetable[hbits] == NULL) {
+        lock_release(as->thelock);
         return -1;
     } else if (as->pagetable[hbits][mbits] == NULL) {
+        lock_release(as->thelock);
         return -1;
     } else if (as->pagetable[hbits][mbits][lbits] == 0) {
+        lock_release(as->thelock);
         return -1;
     } else {
+        lock_release(as->thelock);
         return 0;
     }
 }

@@ -37,6 +37,7 @@
 #include <addrspace.h>
 #include <vm.h>
 #include <proc.h>
+#include <synch.h>
 
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
@@ -60,9 +61,14 @@ as_create(void)
 	}
 	// first level pagetable is 2^8 256
 	as -> start_of_regions = NULL;
-	as -> pagetable = kmalloc(sizeof(paddr_t**)* 256);
-	for(int i = 0; i < 256; i++){
+	as -> pagetable = kmalloc(sizeof(paddr_t**)* 256); ////////////////////////////////////////////////////////////////////////////////////////
+	//as -> pagetable = kmalloc(4 * 256);
+	for(int i = 0; i < (256); i++){
 		as -> pagetable[i] = NULL;
+	}
+	as -> thelock = lock_create("thelock");
+	if(as -> thelock == NULL){
+		return NULL;
 	}
 	/*
 	 * Initialize as needed.
@@ -77,6 +83,7 @@ as_destroy(struct addrspace *as)
 	/*
 	 * Clean up as needed.
 	 */
+	lock_acquire(as -> thelock);
 	struct region *tofree = as -> start_of_regions;
 	struct region *temp;
 	while(tofree != NULL){
@@ -86,6 +93,8 @@ as_destroy(struct addrspace *as)
 		
 	}
 	// need to free up the page table;
+	lock_release(as -> thelock);
+	lock_destroy(as -> thelock);
 	freePTE(as -> pagetable);
 	kfree(as);
 }
@@ -101,6 +110,8 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 	/*
 	 * Write this.
 	 */
+	lock_acquire(newas->thelock);
+	lock_acquire(old->thelock);
 	struct region *old_re = old -> start_of_regions;
 	struct region *new = NULL;
 	struct region *temp = NULL;
@@ -110,6 +121,8 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 		temp = kmalloc(sizeof(struct region));
 		if(temp == NULL){
 			as_destroy(newas);
+			lock_release(old->thelock);
+			lock_release(newas->thelock);
 			return ENOMEM;
 		}
 		//vaddr_t addr = alloc_kpages(old_re -> size);
@@ -126,6 +139,8 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 		temp = kmalloc(sizeof(struct region));
 		if(temp == NULL){
 			as_destroy(newas);
+			lock_release(old->thelock);
+			lock_release(newas->thelock);
 			return ENOMEM;
 		}
 		//vaddr_t addr = alloc_kpages(old_re -> size);
@@ -140,10 +155,14 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 	}
 	//copy pagetable
 	if(vm_ptecp(old -> pagetable, newas -> pagetable) != 0){
+		lock_release(old->thelock);
+		lock_release(newas->thelock);
 		return ENOMEM;
 	}
 	//(void)old;
 
+	lock_release(old->thelock);
+	lock_release(newas->thelock);
 	*ret = newas;
 	return 0;
 }
@@ -249,6 +268,7 @@ as_complete_load(struct addrspace *as)
 	 * Write this.
 	 */
 	as_activate();
+	lock_acquire(as->thelock);
 	paddr_t*** table = as -> pagetable;
 
 	for(int i = 0; i<256; i++){
@@ -285,6 +305,7 @@ as_complete_load(struct addrspace *as)
 	}
 
 	//(void)as;
+	lock_release(as->thelock);
 	struct region *tmp = as -> start_of_regions;
 	while(tmp != NULL){
 		tmp -> write_flag = tmp -> pre_write;
