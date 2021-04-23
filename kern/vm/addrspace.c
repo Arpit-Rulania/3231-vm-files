@@ -132,7 +132,12 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 		//memcpy(addr, old_re -> start, old_re -> size);
 		temp -> start = old_re -> start;
 		temp -> size = old_re -> size;
+		temp -> read_flag = old_re -> read_flag;
+		temp -> write_flag = old_re -> write_flag;
+		temp -> pre_write = old_re -> pre_write;
+		temp -> pre_read = old_re -> pre_read;
 		temp -> next = NULL;
+		//as_define_region(newas, old_re -> start, old_re ->size, old_re -> read_flag, old_re ->read_flag, 1);
 		old_re = old_re -> next;
 		new = temp;
 	}
@@ -150,11 +155,17 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 		//memcpy(addr, old_re -> start, old_re -> size);
 		temp -> start = old_re -> start;
 		temp -> size = old_re -> size;
+		temp -> read_flag = old_re -> read_flag;
+		temp -> write_flag = old_re -> write_flag;
+		temp -> pre_write = old_re -> pre_write;
+		temp -> pre_read = old_re -> pre_read;
 		temp -> next = NULL;
 		new -> next = temp;
+		new = new -> next;
 		old_re = old_re -> next;
 
 	}
+	newas -> start_of_regions = new;
 	//copy pagetable
 	if(vm_ptecp(old -> pagetable, newas -> pagetable) != 0){
 		lock_release(old->thelock);
