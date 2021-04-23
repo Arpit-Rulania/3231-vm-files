@@ -68,6 +68,8 @@ as_create(void)
 	}
 	as -> thelock = lock_create("thelock");
 	if(as -> thelock == NULL){
+		kfree(as -> pagetable);
+		kfree(as);
 		return NULL;
 	}
 	/*
