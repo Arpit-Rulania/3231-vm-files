@@ -88,10 +88,13 @@ void freePTE(paddr_t ***tofree){
             }
             for(int k = 0; k < 64; k++){
                 if(tofree[i][j][k] != 0){
+                    if(PADDR_TO_KVADDR(tofree[i][j][k] & PAGE_FRAME) == NULL){
+                        return;
+                    }
                     free_kpages(PADDR_TO_KVADDR(tofree[i][j][k] & PAGE_FRAME));
                 }
             }
-            kfree(tofree[i][j]);
+            kfree(tofree[j][i]);
         }
         kfree(tofree[i]);
     }
