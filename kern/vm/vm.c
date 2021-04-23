@@ -74,6 +74,9 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
 }
 
 void freePTE(paddr_t ***tofree){
+    if(tofree == NULL){
+        return;
+    }
     
     for(int i = 0; i<256; i++){
         if(tofree[i] == NULL){
