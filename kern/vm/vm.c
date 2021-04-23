@@ -50,7 +50,7 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
             
             for(int k = 0; k < 64; k++){
                 if(old[i][j][k] == 0){
-                    //new[i][j][k] = 0;
+                    new[i][j][k] = 0;
                 }else{
                     vaddr_t framecp = alloc_kpages(1);
                     if(framecp == 0){
@@ -92,7 +92,7 @@ void freePTE(paddr_t ***tofree){
                     free_kpages(PADDR_TO_KVADDR(tofree[i][j][k] & PAGE_FRAME));
                 }
             }
-            kfree(tofree[j][i]);
+            kfree(tofree[i][j]);
         }
         kfree(tofree[i]);
     }
