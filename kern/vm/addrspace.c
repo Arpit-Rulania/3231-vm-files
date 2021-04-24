@@ -104,6 +104,7 @@ as_destroy(struct addrspace *as)
 int as_copy(struct addrspace *old, struct addrspace **ret) {
 	struct addrspace *newas;
 
+	if(old == NULL) return EINVAL;
 	newas = as_create();
 	if (newas==NULL) {
 		return ENOMEM;
@@ -117,30 +118,8 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 	struct region *old_re = old -> start_of_regions;
 	struct region *new = NULL;
 	struct region *temp = NULL;
-	if(old == NULL){
-		return 0;
-	}else{
-		temp = kmalloc(sizeof(struct region));
-		if(temp == NULL){
-			as_destroy(newas);
-			lock_release(old->thelock);
-			lock_release(newas->thelock);
-			return ENOMEM;
-		}
-		//vaddr_t addr = alloc_kpages(old_re -> size);
-		//donno if we need to do this 
-		//memcpy(addr, old_re -> start, old_re -> size);
-		temp -> start = old_re -> start;
-		temp -> size = old_re -> size;
-		temp -> read_flag = old_re -> read_flag;
-		temp -> write_flag = old_re -> write_flag;
-		temp -> pre_write = old_re -> pre_write;
-		temp -> pre_read = old_re -> pre_read;
-		temp -> next = NULL;
-		//as_define_region(newas, old_re -> start, old_re ->size, old_re -> read_flag, old_re ->read_flag, 1);
-		old_re = old_re -> next;
-		new = temp;
-	}
+	
+	
 
 	while(old_re != NULL){
 		temp = kmalloc(sizeof(struct region));
@@ -153,15 +132,17 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 		//vaddr_t addr = alloc_kpages(old_re -> size);
 		//donno if we need to do this
 		//memcpy(addr, old_re -> start, old_re -> size);
+		// copy from the old region
 		temp -> start = old_re -> start;
 		temp -> size = old_re -> size;
 		temp -> read_flag = old_re -> read_flag;
 		temp -> write_flag = old_re -> write_flag;
 		temp -> pre_write = old_re -> pre_write;
 		temp -> pre_read = old_re -> pre_read;
-		temp -> next = NULL;
-		new -> next = temp;
-		new = new -> next;
+		temp -> next = new;
+		new = temp;
+		//new -> next = temp;
+		//new = new -> next;
 		old_re = old_re -> next;
 
 	}

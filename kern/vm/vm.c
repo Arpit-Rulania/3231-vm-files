@@ -60,9 +60,6 @@ int vm_ptecp(paddr_t *** old, paddr_t *** new){
                     
                     memmove((void *)framecp, (void *)PADDR_TO_KVADDR(old[i][j][k] & PAGE_FRAME), PAGE_SIZE);
                     
-                    if(framecp == 0){
-                        return ENOMEM;
-                    }
                     new[i][j][k] = (KVADDR_TO_PADDR(framecp) & PAGE_FRAME) | (old[i][j][k] & TLBLO_DIRTY) | TLBLO_VALID;
 
                 }
